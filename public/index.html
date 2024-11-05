@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventario</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-4">Sistema de Inventario</h1>
+        <div id="userDisplay" class="flex justify-end mb-4" style="display: none;">
+            <span id="userEmail" class="mr-4"></span>
+            <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded">Cerrar Sesión</button>
+        </div>
+        <div id="login" class="bg-white p-6 rounded shadow-md">
+            <h2 class="text-2xl font-bold mb-4">Iniciar Sesión</h2>
+            <input type="text" id="email" placeholder="NombreDeUsuario" class="border p-2 w-full mb-4">
+            <input type="password" id="password" placeholder="Contraseña" class="border p-2 w-full mb-4">
+            <button onclick="login()" class="bg-blue-500 text-white px-4 py-2 rounded w-full mb-4">Iniciar Sesión</button>
+            <button onclick="showRegisterForm()" class="bg-green-500 text-white px-4 py-2 rounded w-full">Crear Cuenta</button>
+        </div>
+        <div id="register" class="bg-white p-6 rounded shadow-md" style="display: none;">
+            <h2 class="text-2xl font-bold mb-4">Crear Cuenta</h2>
+            <input type="text" id="registerEmail" placeholder="NombreDeUsuario" class="border p-2 w-full mb-4">
+            <input type="password" id="registerPassword" placeholder="Contraseña" class="border p-2 w-full mb-4">
+            <button onclick="register()" class="bg-green-500 text-white px-4 py-2 rounded w-full mb-4">Registrar</button>
+            <button onclick="hideRegisterForm()" class="bg-gray-500 text-white px-4 py-2 rounded w-full">Cancelar</button>
+        </div>
+        <div id="inventory" class="bg-white p-6 rounded shadow-md" style="display: none;">
+            <h2 class="text-2xl font-bold mb-4">Productos</h2>
+            <div class="flex mb-4">
+                <input type="text" id="searchInput" placeholder="Buscar por descripción" class="border p-2 w-full">
+                <button onclick="searchProducts()" class="bg-blue-500 text-white px-4 py-2 rounded ml-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </button>
+            </div>
+            <button onclick="showAddProductForm()" class="bg-green-500 text-white px-4 py-2 rounded mb-4">Agregar Producto</button>
+            <table class="min-w-full bg-white">
+                <thead>
+                    <tr>
+                        <th class="py-2 px-4 border-b">ID</th>
+                        <th class="py-2 px-4 border-b">Descripción</th>
+                        <th class="py-2 px-4 border-b">Precio</th>
+                        <th class="py-2 px-4 border-b">Cantidad</th>
+                        <th class="py-2 px-4 border-b">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="productList"></tbody>
+            </table>
+        </div>
+
+        <div id="addProductForm" class="bg-white p-6 rounded shadow-md" style="display: none;">
+            <h2 class="text-2xl font-bold mb-4">Agregar Producto</h2>
+            <input type="text" id="descripcion" placeholder="Descripción" class="border p-2 w-full mb-4">
+            <input type="number" id="precio" placeholder="Precio" class="border p-2 w-full mb-4">
+            <input type="number" id="cantidad" placeholder="Cantidad" class="border p-2 w-full mb-4">
+            <button onclick="addProduct()" class="bg-green-500 text-white px-4 py-2 rounded w-full mb-4">Agregar</button>
+            <button onclick="hideAddProductForm()" class="bg-gray-500 text-white px-4 py-2 rounded w-full">Cancelar</button>
+        </div>
+
+        <div id="updateProductForm" class="bg-white p-6 rounded shadow-md" style="display: none;">
+            <h2 class="text-2xl font-bold mb-4">Actualizar Producto</h2>
+            <input type="hidden" id="updateProductId">
+            <input type="text" id="updateDescripcion" placeholder="Descripción" class="border p-2 w-full mb-4">
+            <input type="number" id="updatePrecio" placeholder="Precio" class="border p-2 w-full mb-4">
+            <input type="number" id="updateCantidad" placeholder="Cantidad" class="border p-2 w-full mb-4">
+            <button onclick="updateProduct()" class="bg-yellow-500 text-white px-4 py-2 rounded w-full mb-4">Actualizar</button>
+            <button onclick="hideUpdateProductForm()" class="bg-gray-500 text-white px-4 py-2 rounded w-full">Cancelar</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+
+    <script>
+        // Configura Firebase
+        const firebaseConfig = {
+            apiKey: "APIKEY",
+            authDomain: "AUTHDOMAIN",
+            projectId: "PROJECTID",
+        };
+    
+        // Inicializa Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    
+        // Mostrar formulario de registro
+        function showRegisterForm() {
+            document.getElementById("login").style.display = "none";
+            document.getElementById("register").style.display = "block";
+        }
+
+        // Ocultar formulario de registro
+        function hideRegisterForm() {
+            document.getElementById("register").style.display = "none";
+            document.getElementById("login").style.display = "block";
+        }
+
+        // Registrar usuario
+        function register() {
+            const email = document.getElementById("registerEmail").value;
+            const password = document.getElementById("registerPassword").value;
+
+            // Verificar si el usuario ya existe
+            db.collection("users").where("email", "==", email).get()
+                .then(querySnapshot => {
+                    if (!querySnapshot.empty) {
+                        alert("El usuario ya está registrado");
+                    } else {
+                        // Registrar nuevo usuario
+                        db.collection("users").add({
+                            email: email,
+                            password: password
+                        })
+                        .then(() => {
+                            alert("Usuario registrado exitosamente");
+                            hideRegisterForm();
+                        })
+                        .catch(error => {
+                            console.error("Error:", error);
+                            alert("Error al registrar usuario: " + error.message);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("Error al verificar usuario: " + error.message);
+                });
+        }
+
+        // Inicio de sesión
+        function login() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            db.collection("users").where("email", "==", email).where("password", "==", password).get()
+                .then(querySnapshot => {
+                    if (!querySnapshot.empty) {
+                        const user = querySnapshot.docs[0].data();
+                        document.getElementById("userEmail").textContent = `Usuario: ${user.email}`;
+                        document.getElementById("userDisplay").style.display = "flex";
+                        document.getElementById("inventory").style.display = "block";
+                        document.getElementById("login").style.display = "none";
+                        document.getElementById("email").value = "";
+                        document.getElementById("password").value = "";
+                        getProducts();  // Mostrar la lista de productos al iniciar sesión
+                    } else {
+                        alert("Correo o contraseña incorrectos");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("Error al iniciar sesión: " + error.message);
+                });
+        }
+
+        // Cerrar sesión
+        function logout() {
+            document.getElementById("userDisplay").style.display = "none";
+            document.getElementById("inventory").style.display = "none";
+            document.getElementById("login").style.display = "block";
+        }
+
+        // Mostrar formulario para agregar producto
+        function showAddProductForm() {
+            document.getElementById("addProductForm").style.display = "block";
+            document.getElementById("inventory").style.display = "none";
+        }
+
+        // Ocultar formulario para agregar producto
+        function hideAddProductForm() {
+            document.getElementById("addProductForm").style.display = "none";
+            document.getElementById("inventory").style.display = "block";
+        }
+
+        // Mostrar formulario para actualizar producto
+        function showUpdateProductForm(product) {
+            document.getElementById("updateProductId").value = product.id;
+            document.getElementById("updateDescripcion").value = product.descripcion;
+            document.getElementById("updatePrecio").value = product.precio;
+            document.getElementById("updateCantidad").value = product.cantidad;
+            document.getElementById("updateProductForm").style.display = "block";
+            document.getElementById("inventory").style.display = "none";
+        }
+
+        // Ocultar formulario para actualizar producto
+        function hideUpdateProductForm() {
+            document.getElementById("updateProductForm").style.display = "none";
+            document.getElementById("inventory").style.display = "block";
+        }
+    
+        // Agregar producto
+        function addProduct() {
+            const descripcion = document.getElementById("descripcion").value;
+            const precio = document.getElementById("precio").value;
+            const cantidad = document.getElementById("cantidad").value;
+
+            fetch("/api/productos", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ descripcion, precio, cantidad })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                getProducts();  // Refrescar la lista de productos
+                hideAddProductForm();  // Ocultar el formulario de agregar producto
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+        // Actualizar producto
+        function updateProduct() {
+            const id = document.getElementById("updateProductId").value;
+            const descripcion = document.getElementById("updateDescripcion").value;
+            const precio = document.getElementById("updatePrecio").value;
+            const cantidad = document.getElementById("updateCantidad").value;
+
+            fetch(`/api/productos/${id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ descripcion, precio, cantidad })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                getProducts();  // Refrescar la lista de productos
+                hideUpdateProductForm();  // Ocultar el formulario de actualizar producto
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+        // Eliminar producto
+        function deleteProduct(id) {
+            fetch(`/api/productos/${id}`, {
+                method: "DELETE"
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                getProducts();  // Refrescar la lista de productos
+            })
+            .catch(error => console.error("Error:", error));
+        }
+    
+        // Consultar productos
+        function getProducts() {
+            fetch("/api/productos")
+                .then(response => response.json())
+                .then(data => {
+                    const list = document.getElementById("productList");
+                    list.innerHTML = "";
+                    data.forEach(product => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td class="py-2 px-4 border-b">${product.id}</td>
+                            <td class="py-2 px-4 border-b">${product.descripcion}</td>
+                            <td class="py-2 px-4 border-b">${product.precio}</td>
+                            <td class="py-2 px-4 border-b">${product.cantidad}</td>
+                            <td class="py-2 px-4 border-b">
+                                <button onclick='showUpdateProductForm(${JSON.stringify(product)})' class="bg-yellow-500 text-white px-2 py-1 rounded">Actualizar</button>
+                                <button onclick="deleteProduct('${product.id}')" class="bg-red-500 text-white px-2 py-1 rounded">Eliminar</button>
+                            </td>
+                        `;
+                        list.appendChild(row);
+                    });
+                })
+                .catch(error => console.error("Error:", error));
+        }
+
+        // Buscar productos por descripción
+        function searchProducts() {
+            const searchInput = document.getElementById("searchInput").value.toLowerCase();
+            fetch("/api/productos")
+                .then(response => response.json())
+                .then(data => {
+                    const list = document.getElementById("productList");
+                    list.innerHTML = "";
+                    data.forEach(product => {
+                        if (product.descripcion.toLowerCase().includes(searchInput)) {
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                <td class="py-2 px-4 border-b">${product.id}</td>
+                                <td class="py-2 px-4 border-b">${product.descripcion}</td>
+                                <td class="py-2 px-4 border-b">${product.precio}</td>
+                                <td class="py-2 px-4 border-b">${product.cantidad}</td>
+                                <td class="py-2 px-4 border-b">
+                                    <button onclick='showUpdateProductForm(${JSON.stringify(product)})' class="bg-yellow-500 text-white px-2 py-1 rounded">Actualizar</button>
+                                    <button onclick="deleteProduct('${product.id}')" class="bg-red-500 text-white px-2 py-1 rounded">Eliminar</button>
+                                </td>
+                            `;
+                            list.appendChild(row);
+                        }
+                    });
+                })
+                .catch(error => console.error("Error:", error));
+        }
+        
+    </script>   
+</body>
+</html> 

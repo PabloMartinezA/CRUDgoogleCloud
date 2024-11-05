@@ -1,0 +1,14 @@
+runtime: nodejs20
+handlers:
+  # Servir archivos estáticos desde la carpeta "public"
+  - url: /static
+    static_dir: public
+
+  # Redirigir la URL raíz al archivo index.html
+  - url: /
+    static_files: public/index.html
+    upload: public/index.html
+
+  # Configurar rutas para la API en Express (server.js)
+  - url: /api/.*
+    script: auto  # Esto ejecuta el server.js para las rutas de API
